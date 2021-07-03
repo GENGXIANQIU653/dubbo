@@ -21,6 +21,8 @@ import java.util.Map;
 /**
  * RPC invoke result. (API, Prototype, NonThreadSafe)
  *
+ * Result 是会话域，它持有调用过程中返回值，异常等
+ *
  * @serial Don't change the class name and package name.
  * @see com.alibaba.dubbo.rpc.Invoker#invoke(Invocation)
  * @see com.alibaba.dubbo.rpc.RpcResult
@@ -28,20 +30,21 @@ import java.util.Map;
 public interface Result {
 
     /**
-     * Get invoke result.
+     * 获得返回值
      *
      * @return result. if no result return null.
      */
     Object getValue();
 
     /**
-     * Get exception.
+     * 获得返回的异常
      *
      * @return exception. if no exception return null.
      */
     Throwable getException();
 
     /**
+     * 是否有异常
      * Has exception.
      *
      * @return has exception.
