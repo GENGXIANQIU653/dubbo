@@ -29,6 +29,9 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 /**
+ * @author
+ * 实现 ThreadPool 接口，固定大小线程池，启动时建立线程，不关闭，一直持有
+ *
  * Creates a thread pool that reuses a fixed number of threads
  *
  * @see java.util.concurrent.Executors#newFixedThreadPool(int)
@@ -37,9 +40,28 @@ public class FixedThreadPool implements ThreadPool {
 
     @Override
     public Executor getExecutor(URL url) {
+
+        /**
+         * 获得线程名、线程数、队列数。目前只有服务提供者使用，配置方式如下:
+         *
+         * <dubbo:service interface="com.alibaba.dubbo.demo.DemoService" ref="demoService">
+         *
+         *     <dubbo:parameter key="threadname" value="shuaiqi" />
+         *     <dubbo:parameter key="threads" value="123" />
+         *     <dubbo:parameter key="queues" value="10" />
+         *
+         * </dubbo:service>
+         */
+        // 线程名
         String name = url.getParameter(Constants.THREAD_NAME_KEY, Constants.DEFAULT_THREAD_NAME);
+
+        // 线程数
         int threads = url.getParameter(Constants.THREADS_KEY, Constants.DEFAULT_THREADS);
+
+        // 队列数
         int queues = url.getParameter(Constants.QUEUES_KEY, Constants.DEFAULT_QUEUES);
+
+        // 创建执行器
         return new ThreadPoolExecutor(threads, threads, 0, TimeUnit.MILLISECONDS,
                 queues == 0 ? new SynchronousQueue<Runnable>() :
                         (queues < 0 ? new LinkedBlockingQueue<Runnable>()

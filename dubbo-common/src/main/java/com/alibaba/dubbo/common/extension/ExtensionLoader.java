@@ -63,29 +63,102 @@ public class ExtensionLoader<T> {
 
     private static final Logger logger = LoggerFactory.getLogger(ExtensionLoader.class);
 
+    /**
+     * Java SPI 的配置目录
+     */
     private static final String SERVICES_DIRECTORY = "META-INF/services/";
 
+    /**
+     * 用于用户自定义的拓展实现
+     */
     private static final String DUBBO_DIRECTORY = "META-INF/dubbo/";
 
+    /**
+     * 用于 Dubbo 内部提供的拓展实现
+     */
     private static final String DUBBO_INTERNAL_DIRECTORY = DUBBO_DIRECTORY + "internal/";
 
     private static final Pattern NAME_SEPARATOR = Pattern.compile("\\s*[,]+\\s*");
 
+    // ============================== 静态属性 ==============================
+
+    /**
+     * 拓展加载器集合
+     *
+     * key：拓展接口
+     */
     private static final ConcurrentMap<Class<?>, ExtensionLoader<?>> EXTENSION_LOADERS = new ConcurrentHashMap<Class<?>, ExtensionLoader<?>>();
 
+    /**
+     * 拓展实现类集合
+     *
+     * key：拓展实现类
+     * value：拓展对象。
+     *
+     * 例如，key 为 Class<AccessLogFilter>
+     *  value 为 AccessLogFilter 对象
+     */
     private static final ConcurrentMap<Class<?>, Object> EXTENSION_INSTANCES = new ConcurrentHashMap<Class<?>, Object>();
 
-    // ==============================
+    // ============================== 对象属性 ==============================
 
+    /**
+     * 拓展接口
+     * 例如，Protocol
+     */
     private final Class<?> type;
 
+    /**
+     * 对象工厂
+     *
+     * 用于调用 {@link #injectExtension(Object)} 方法，向拓展对象注入依赖属性。
+     *
+     * 例如，StubProxyFactoryWrapper 中有 `Protocol protocol` 属性。
+     */
     private final ExtensionFactory objectFactory;
 
+    /**
+     * 缓存的拓展名与拓展类的映射
+     *
+     * 和 {@link #cachedClasses} 的 KV 对调。
+     *
+     * 通过 {@link #loadExtensionClasses} 加载
+     */
     private final ConcurrentMap<Class<?>, String> cachedNames = new ConcurrentHashMap<Class<?>, String>();
 
+    /**
+     52:  * 缓存的拓展实现类集合。
+     53:  *
+     54:  * 不包含如下两种类型：
+     55:  *  1. 自适应拓展实现类。例如 AdaptiveExtensionFactory，拓展 Adaptive 实现类，会添加到 cachedAdaptiveClass 属性中
+     56:  *  2. 带唯一参数为拓展接口的构造方法的实现类，或者说拓展 Wrapper 实现类。例如，ProtocolFilterWrapper 。
+     57:  *   拓展 Wrapper 实现类，会添加到 {@link #cachedWrapperClasses} 中
+     58:  *
+     59:  * 通过 {@link #loadExtensionClasses} 加载
+     60:  */
     private final Holder<Map<String, Class<?>>> cachedClasses = new Holder<Map<String, Class<?>>>();
 
+    /**
+     64:  * 拓展名与 @Activate 的映射
+     65:  *
+     66:  * 例如，AccessLogFilter。
+     67:  *
+     68:  * 用于 {@link #getActivateExtension(URL, String)}
+     69:  */
     private final Map<String, Activate> cachedActivates = new ConcurrentHashMap<String, Activate>();
+
+    /**
+     72:  * 缓存的拓展对象集合
+     73:  *
+     74:  * key：拓展名
+     75:  * value：拓展对象
+     76:  *
+     77:  * 例如，Protocol 拓展
+     78:  *      key：dubbo value：DubboProtocol
+     79:  *      key：injvm value：InjvmProtocol
+     80:  *
+     81:  * 通过 {@link #loadExtensionClasses} 加载
+     82:  */
     private final ConcurrentMap<String, Holder<Object>> cachedInstances = new ConcurrentHashMap<String, Holder<Object>>();
 
     /**
@@ -93,10 +166,30 @@ public class ExtensionLoader<T> {
      */
     private final Holder<Object> cachedAdaptiveInstance = new Holder<Object>();
 
+    /**
+     89:  * 缓存的自适应拓展对象的类
+     90:  *
+     91:  * {@link #getAdaptiveExtensionClass()}
+     92:  */
     private volatile Class<?> cachedAdaptiveClass = null;
+
+    /**
+     95:  * 缓存的默认拓展名
+     96:  *
+     97:  * 通过 {@link SPI} 注解获得
+     98:  */
     private String cachedDefaultName;
+
+
     private volatile Throwable createAdaptiveInstanceError;
 
+    /**
+     108:  * 拓展 Wrapper 实现类集合
+     109:  *
+     110:  * 带唯一参数为拓展接口的构造方法的实现类
+     111:  *
+     112:  * 通过 {@link #loadExtensionClasses} 加载
+     113:  */
     private Set<Class<?>> cachedWrapperClasses;
 
     private Map<String, IllegalStateException> exceptions = new ConcurrentHashMap<String, IllegalStateException>();
@@ -643,9 +736,10 @@ public class ExtensionLoader<T> {
                 classes = cachedClasses.get();
                 if (classes == null) {
                     /**
-                     * 加载拓展类，见detail
+                     * 从配置文件中，加载拓展类，见detail
                      */
                     classes = loadExtensionClasses();
+                    // 设置到缓存
                     cachedClasses.set(classes);
                 }
             }

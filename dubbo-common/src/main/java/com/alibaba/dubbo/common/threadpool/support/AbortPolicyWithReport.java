@@ -33,6 +33,12 @@ import java.util.concurrent.Semaphore;
 import java.util.concurrent.ThreadPoolExecutor;
 
 /**
+ * @author
+ *
+ * 拒绝策略实现类
+ *
+ * 打印 JStack ，分析线程状态
+ *
  * Abort Policy.
  * Log warn info when abort.
  */
