@@ -30,7 +30,10 @@
 
     <bean id="protocolService" class="com.alibaba.dubbo.examples.spi.adaptive.protocol.impl.ProtocolServiceImpl"/>
 
-    <dubbo:service interface="com.alibaba.dubbo.examples.spi.adaptive.protocol.api.ProtocolService" version="1.0.0"
-                   ref="protocolService"/>
+    <dubbo:service interface="com.alibaba.dubbo.examples.spi.adaptive.protocol.api.ProtocolService" version="1.0.0" ref="protocolService"/>
+
+<!--    <dubbo:service interface="com.alibaba.dubbo.examples.spi.adaptive.protocol.api.ProtocolService">-->
+<!--        <dubbo:method name="sayHello" retries="2"/>-->
+<!--    </dubbo:service>-->
 
 </beans>

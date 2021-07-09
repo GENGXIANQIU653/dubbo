@@ -46,12 +46,15 @@ import java.util.Map;
 import static com.alibaba.dubbo.config.spring.util.BeanFactoryUtils.addApplicationListener;
 
 /**
+ * @author
  * ServiceFactoryBean
  *
  * @export
  */
-public class ServiceBean<T> extends ServiceConfig<T> implements InitializingBean, DisposableBean,
-        ApplicationContextAware, ApplicationListener<ContextRefreshedEvent>, BeanNameAware,
+public class ServiceBean<T> extends ServiceConfig<T> implements InitializingBean,
+        DisposableBean,
+        ApplicationContextAware,
+        ApplicationListener<ContextRefreshedEvent>, BeanNameAware,
         ApplicationEventPublisherAware {
 
     private static final long serialVersionUID = 213195494150089726L;
@@ -97,25 +100,53 @@ public class ServiceBean<T> extends ServiceConfig<T> implements InitializingBean
         return service;
     }
 
+
+    /**
+     * 立即导出的入口是 ServiceBean 的 onApplicationEvent 方法
+     * 该方法收到 Spring 容器的刷新事件后，会调用 export 方法执行服务导出操作
+     *
+     * 服务导出之前，要进行对一系列的配置进行检查，以及生成 URL。准备工作做完，随后开始导出服务。
+     * 首先导出到本地，然后再导出到远程。
+     *
+     * 导出到本地就是将服务导出到 JVM 中，此过程比较简单
+     *
+     * 导出到远程的过程则要复杂的多，以 dubbo 协议为例，DubboProtocol 类的 export 方法将会被调用
+     * @param event
+     */
     @Override
     public void onApplicationEvent(ContextRefreshedEvent event) {
+        // 是否有延迟导出 && 是否已导出 && 是不是已被取消导出
         if (isDelay() && !isExported() && !isUnexported()) {
             if (logger.isInfoEnabled()) {
                 logger.info("The service ready on spring started. service: " + getInterface());
             }
+            /**
+             * 导出服务，见detail
+             */
             export();
         }
     }
 
+    /**
+     * 方法返回 true 时，表示无需延迟导出。返回 false 时，表示需要延迟导出
+     * @return
+     */
     private boolean isDelay() {
+        // 获取 delay
         Integer delay = getDelay();
         ProviderConfig provider = getProvider();
         if (delay == null && provider != null) {
+            // 如果前面获取的 delay 为空，这里继续获取
             delay = provider.getDelay();
         }
+        // 判断 delay 是否为空，或者等于 -1
         return supportedApplicationListener && (delay == null || delay == -1);
     }
 
+    /**
+     * 延迟导出的入口是 ServiceBean 的 afterPropertiesSet 方法
+     * @throws Exception
+     */
     @Override
     @SuppressWarnings({"unchecked", "deprecation"})
     public void afterPropertiesSet() throws Exception {
@@ -124,7 +155,7 @@ public class ServiceBean<T> extends ServiceConfig<T> implements InitializingBean
             if (providerConfigMap != null && providerConfigMap.size() > 0) {
                 Map<String, ProtocolConfig> protocolConfigMap = applicationContext == null ? null : BeanFactoryUtils.beansOfTypeIncludingAncestors(applicationContext, ProtocolConfig.class, false, false);
                 if ((protocolConfigMap == null || protocolConfigMap.size() == 0)
-                        && providerConfigMap.size() > 1) { // backward compatibility
+                        && providerConfigMap.size() > 1) {
                     List<ProviderConfig> providerConfigs = new ArrayList<ProviderConfig>();
                     for (ProviderConfig config : providerConfigMap.values()) {
                         if (config.isDefault() != null && config.isDefault().booleanValue()) {
